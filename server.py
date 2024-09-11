@@ -100,18 +100,25 @@ signal.signal(signal.SIGTERM, shutdown_server)
 
 def setup_database():
     if not os.path.isfile(DB_FILE):
-        conn = sqlite3.connect(DB_FILE)
-        c = conn.cursor()
-        c.execute('''
-            CREATE TABLE IF NOT EXISTS logs (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                timestamp TEXT NOT NULL,
-                event_type TEXT NOT NULL,
-                details TEXT NOT NULL
-            )
-        ''')
-        conn.commit()
-        conn.close()
+        try:
+            conn = sqlite3.connect(DB_FILE)
+            c = conn.cursor()
+            c.execute('''
+                CREATE TABLE IF NOT EXISTS logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    details TEXT NOT NULL
+                )
+            ''')
+            conn.commit()
+            conn.close()
+            print("Database setup complete.")
+        except Exception as e:
+            print(f"Error setting up database: {e}")
+    else:
+        print("Database file already exists.")
+
 
 
 if __name__ == "__main__":
