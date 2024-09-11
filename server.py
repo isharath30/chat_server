@@ -114,5 +114,5 @@ def setup_database():
 
 if __name__ == "__main__":
     setup_database()
-    print(f"Server started at ws://127.0.0.1:1234")
-    socketio.run(app)
+    print("Server started")
+    socketio.run(app, host='127.0.0.1', port=1234)
