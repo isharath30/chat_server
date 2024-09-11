@@ -3,13 +3,13 @@ from flask_socketio import SocketIO, emit
 import datetime
 import sqlite3
 import signal
-import sys
+import sys,os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(app, cors_allowed_origins='*')
 
-DB_FILE = 'server_log.db'
+DB_FILE = os.path.join(os.path.dirname(__file__), 'server_log.db')
 server_name = "Server A"
 start_time = datetime.datetime.now().strftime('%d-%m-%Y %H:%M:%S')
 daily_client_count = 0
@@ -99,18 +99,20 @@ signal.signal(signal.SIGINT, shutdown_server)
 signal.signal(signal.SIGTERM, shutdown_server)
 
 def setup_database():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS logs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT NOT NULL,
-            event_type TEXT NOT NULL,
-            details TEXT NOT NULL
-        )
-    ''')
-    conn.commit()
-    conn.close()
+    if not os.path.isfile(DB_FILE):
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute('''
+            CREATE TABLE IF NOT EXISTS logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                details TEXT NOT NULL
+            )
+        ''')
+        conn.commit()
+        conn.close()
+
 
 if __name__ == "__main__":
     setup_database()
