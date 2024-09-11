@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Client</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+        }
+
+        .container {
+            width: 400px;
+            max-width: 100%;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #chat-box {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: scroll;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #fafafa;
+        }
+
+        #message-input,
+        #username-input,
+        #rating-input {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: #fff;
+        }
+
+        #send-button {
+            margin-bottom: 10px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #exit-button {
+            background-color: #6c757d;
+            color: #fff;
+        }
+
+        #exit-button:hover {
+            background-color: #5a6268;
+        }
+
+        #welcome-screen,
+        #chat-screen,
+        #rating-screen,
+        #connection-screen {
+            display: none;
+        }
+
+        #chat-screen.active,
+        #welcome-screen.active,
+        #rating-screen.active,
+        #connection-screen.active {
+            display: block;
+        }
+
+        .button-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .exit-container {
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        #connection-status {
+            color: red;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="connection-screen" class="active">
+            <h1 id="connection-status">Connect to server</h1>
+        </div>
+
+        <div id="welcome-screen">
+            <h1>Welcome to Chat Server</h1>
+            <input type="text" id="username-input" placeholder="Enter your username" required>
+            <button id="set-username-button">Set Username</button>
+        </div>
+
+        <div id="chat-screen">
+            <h1>Chat Client</h1>
+            <div id="chat-box"></div>
+            <div class="button-container">
+                <input type="text" id="message-input" placeholder="Enter your message" required>
+                <button id="send-button">Send</button>
+            </div>
+            <div class="exit-container">
+                <button id="exit-button">Exit</button>
+            </div>
+        </div>    
+
+        <div id="rating-screen">
+            <h1>Rate the Chat Experience</h1>
+            <input type="number" id="rating-input" placeholder="Rate the server (1-5)" min="1" max="5" required>
+            <button id="rate-button">Submit Rating</button>
+        </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.1/socket.io.min.js"></script>
+    <script>
+        let socket;
+        let username = null;
+        let isRatingScreenActive = false;
+    
+        function connectToServer() {
+            try {
+                socket = io('ws://127.0.0.1:5000', { reconnectionAttempts: 1 });
+
+    
+                socket.on('connect', () => {
+                    console.log('Connected to the server');
+                    document.getElementById('connection-screen').classList.remove('active');
+                    document.getElementById('welcome-screen').classList.add('active');
+                    clearInputs();
+                });
+    
+                socket.on('disconnect', () => {
+                    console.error('Disconnected from server');
+                    showConnectionScreen('Server disconnected.');
+                });
+    
+                socket.on('connect_error', () => {
+                    console.error('Connection to server failed');
+                    showConnectionScreen('Failed to connect to the server.');
+                });
+    
+                socket.on('message', (data) => {
+                    if (data.message) {
+                        appendMessage('', data.message);
+                    }
+                });
+    
+                socket.on('request_rating', () => {
+                    showRatingScreen();
+                });
+    
+                socket.on('action', (data) => {
+                    if (data.action === 'clear_inputs') {
+                        clearInputs();
+                    }
+                });
+    
+                window.addEventListener("beforeunload", (event) => {
+                    if (document.getElementById('chat-screen').classList.contains('active') || document.getElementById('rating-screen').classList.contains('active')) {
+                        event.preventDefault();
+                        event.returnValue = '';
+                        showRatingScreen();
+                        isRatingScreenActive = true;
+                    }
+                });
+    
+            } catch (error) {
+                console.error('Error while connecting:', error);
+                showConnectionScreen('Error connecting to the server.');
+            }
+        }
+    
+        function appendMessage(user, message) {
+            const chatBox = document.getElementById('chat-box');
+            const messageElement = document.createElement('div');
+            messageElement.textContent = `${user}: ${message}`;
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    
+        function showConnectionScreen(message) {
+            document.getElementById('connection-status').textContent = message;
+            document.getElementById('welcome-screen').classList.remove('active');
+            document.getElementById('chat-screen').classList.remove('active');
+            document.getElementById('rating-screen').classList.remove('active');
+            document.getElementById('connection-screen').classList.add('active');
+        }
+    
+        function showWelcomeScreen() {
+            document.getElementById('connection-screen').classList.remove('active');
+            document.getElementById('chat-screen').classList.remove('active');
+            document.getElementById('rating-screen').classList.remove('active');
+            document.getElementById('welcome-screen').classList.add('active');
+            clearInputs();
+        }
+    
+        function showRatingScreen() {
+            document.getElementById('chat-screen').classList.remove('active');
+            document.getElementById('rating-screen').classList.add('active');
+        }
+    
+        document.getElementById('set-username-button').addEventListener('click', () => {
+            username = document.getElementById('username-input').value.trim();
+            if (username) {
+                socket.emit('set_username', { username });
+                document.getElementById('welcome-screen').classList.remove('active');
+                document.getElementById('chat-screen').classList.add('active');
+            } else {
+                alert('Please enter a username.');
+            }
+        });
+    
+        document.getElementById('send-button').addEventListener('click', () => {
+            const message = document.getElementById('message-input').value.trim();
+            if (message && username) {
+                socket.emit('message', { message, username });
+                appendMessage(username, message);
+                document.getElementById('message-input').value = '';
+            } else if (!username) {
+                alert('Please set a username first.');
+            }
+        });
+    
+        document.getElementById('exit-button').addEventListener('click', () => {
+            if (!isRatingScreenActive) {
+                socket.emit('message', { message: 'exit', username });
+                isRatingScreenActive = true;
+                showRatingScreen();
+            }
+        });
+    
+        document.getElementById('rate-button').addEventListener('click', () => {
+            const rating = parseInt(document.getElementById('rating-input').value, 10);
+            if (rating >= 1 && rating <= 5) {
+                socket.emit('rating', { rating, username });
+                showWelcomeScreen();
+                isRatingScreenActive = false;
+            } else {
+                alert('Please enter a rating between 1 and 5.');
+            }
+        });
+    
+        function clearInputs() {
+            document.getElementById('username-input').value = '';
+            document.getElementById('message-input').value = '';
+            document.getElementById('rating-input').value = '';
+            username = null;
+        }
+    
+        window.onload = connectToServer;
+    </script>    
+</body>
+</html>
